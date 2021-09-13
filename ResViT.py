@@ -206,19 +206,19 @@ class ViTResNet(nn.Module):
         x = F.relu(self.bn1(self.conv1(img)))
         x = self.layer1(x)
         x = self.layer2(x)  
-        x = self.layer3(x) 
+        x = self.layer3(x) # b, 64, 64   (b,hw,c)
         
-        x = rearrange(x, 'b c h w -> b (h w) c') # 64 vectors each with 64 points. These are the sequences or word vecotrs like in NLP
+        x = rearrange(x, 'b c h w -> b (h w) c') # 64 vectors each with 64 points. These are the sequences or word vecotrs like in NLP  # b,64, 64 (b,c,hw)
 
         #Tokenization 
-        wa = rearrange(self.token_wA, 'b h w -> b w h') #Transpose
-        A= torch.einsum('bij,bjk->bik', x, wa) 
-        A = rearrange(A, 'b h w -> b w h') #Transpose
-        A = A.softmax(dim=-1)
+        wa = rearrange(self.token_wA, 'b h w -> b w h') #Transpose   # b,8,64  (b,L,64)  --> rearrang b,64,8 (b,64,L)
+        A= torch.einsum('bij,bjk->bik', x, wa)                       # b,64 ,8 
+        A = rearrange(A, 'b h w -> b w h') #Transpose                # b,8,64
+        A = A.softmax(dim=-1)   
 
-        VV= torch.einsum('bij,bjk->bik', x, self.token_wV)       
-        T = torch.einsum('bij,bjk->bik', A, VV)  
-        #print(T.size())
+        VV= torch.einsum('bij,bjk->bik', x, self.token_wV)           # b,64,128(dim)
+        T = torch.einsum('bij,bjk->bik', A, VV)                     #  b,8,128
+        #print(T.size())    
 
         cls_tokens = self.cls_token.expand(img.shape[0], -1, -1)
         x = torch.cat((cls_tokens, T), dim=1)
